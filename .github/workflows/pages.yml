@@ -14,22 +14,32 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Validate HTML and JavaScript
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
           html = Path("index.html").read_text(encoding="utf-8")
-          assert '<html lang="fa" dir="rtl">' in html, "Persian RTL document tag missing"
-          assert html.count("<script>") == 1 and html.count("</script>") == 1, "Expected one inline script"
-          assert 'id="pairs"' in html and 'id="refresh"' in html, "Required UI controls missing"
+          assert '<html lang="fa" dir="rtl">' in html
+          assert html.count("<script>") == 1 and html.count("</script>") == 1
+          assert 'id="pairs"' in html and 'id="refresh"' in html
           scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
           Path("wal-inline.js").write_text(scripts[0], encoding="utf-8")
           print("HTML smoke checks passed")
           PY
           node --check wal-inline.js
+      - name: Validate backend syntax
+        run: |
+          python -m py_compile backend/main.py
+      - name: Check API dependencies
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          req = Path("backend/requirements.txt").read_text()
+          assert "fastapi" in req and "httpx" in req and "uvicorn" in req
+          print("Backend dependency manifest passed")
+          PY
   deploy:
     needs: test
     environment:
@@ -37,12 +47,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload site
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: .
       - name: Deploy
