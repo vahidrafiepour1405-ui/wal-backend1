@@ -1,4 +1,4 @@
-name: Deploy WAL web app to GitHub Pages
+name: Test and deploy WAL web app
 on:
   push:
     branches: [main]
@@ -11,7 +11,27 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate HTML and JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path("index.html").read_text(encoding="utf-8")
+          assert '<html lang="fa" dir="rtl">' in html, "Persian RTL document tag missing"
+          assert html.count("<script>") == 1 and html.count("</script>") == 1, "Expected one inline script"
+          assert 'id="pairs"' in html and 'id="refresh"' in html, "Required UI controls missing"
+          scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+          Path("wal-inline.js").write_text(scripts[0], encoding="utf-8")
+          print("HTML smoke checks passed")
+          PY
+          node --check wal-inline.js
   deploy:
+    needs: test
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
