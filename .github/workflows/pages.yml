@@ -22,13 +22,15 @@ jobs:
           import re
           html = Path("index.html").read_text(encoding="utf-8")
           assert '<html lang="fa" dir="rtl">' in html
-          assert html.count("<script>") == 1 and html.count("</script>") == 1
+          assert "<script>" in html and "</script>" in html
+          assert "market.js?v=1" in html
           assert 'id="pairs"' in html and 'id="refresh"' in html
           scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
           Path("wal-inline.js").write_text(scripts[0], encoding="utf-8")
           print("HTML smoke checks passed")
           PY
           node --check wal-inline.js
+          node --check market.js
       - name: Validate backend syntax
         run: |
           python -m py_compile backend/main.py
