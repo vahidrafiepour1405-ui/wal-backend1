@@ -1,10 +1,13 @@
 (function(){
 const status=document.getElementById('onchainStatus'),rows=document.getElementById('onchainRows');
+// Render's service name from render.yaml; if it has not been deployed yet, use the public provider fallback.
+const API_BASE='https://wal-api.onrender.com';
 function node(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
 function findRows(x){
  if(Array.isArray(x)) return x;
  if(x&&typeof x==='object'){
-  for(const k of ['transactions','items','results','data','rows','transfers','recent']) if(Array.isArray(x[k])) return x[k];
+  for(const k of ['transactions','items','results','rows','transfers','recent']) if(Array.isArray(x[k])) return x[k];
+  if(x.data!==undefined){const nested=findRows(x.data);if(nested.length)return nested;}
   for(const v of Object.values(x)) if(Array.isArray(v)) return v;
  }
  return [];
@@ -24,14 +27,29 @@ function display(x){
   rows.append(r);
  }
 }
+async function getJson(url){
+ const response=await fetch(url,{cache:'no-store'});
+ if(!response.ok)throw Error('HTTP '+response.status);
+ return response.json();
+}
 async function refresh(){
- status.textContent='در حال دریافت داده عمومی HypurrTrace…';rows.replaceChildren();
+ status.textContent='در حال بررسی API WAL و دریافت داده آنچین…';rows.replaceChildren();
  try{
-  const response=await fetch('https://trace.hypurrscan.io/api/v1/recent',{cache:'no-store'});
-  if(!response.ok)throw Error('HTTP '+response.status);
-  const data=await response.json();display(data);
-  status.textContent='اتصال موفق · منبع: HypurrTrace / Hypurrscan · '+new Date().toLocaleTimeString('fa-IR');
- }catch(e){status.textContent='دریافت مستقیم انجام نشد. ممکن است شبکه، محدودیت API یا CORS مانع باشد. برای استفاده از پراکسی، API باید روی Render مستقر شود.';}
+  // Prefer our backend so the app does not depend on browser CORS support for the provider.
+  const data=await getJson(API_BASE+'/onchain/hypurrscan/recent');
+  display(data);
+  status.textContent='اتصال به API WAL موفق · منبع داده: HypurrTrace / Hypurrscan · '+new Date().toLocaleTimeString('fa-IR')+' · تراکنش‌ها به‌تنهایی اثبات انباشت نهنگ نیستند.';
+  return;
+ }catch(backendError){
+  try{
+   const data=await getJson('https://trace.hypurrscan.io/api/v1/recent');
+   display(data);
+   status.textContent='داده مستقیم HypurrTrace دریافت شد؛ API بک‌اند WAL هنوز در دسترس نیست یا مستقر نشده · '+new Date().toLocaleTimeString('fa-IR');
+  }catch(providerError){
+   status.textContent='دریافت داده ناموفق است. احتمالاً API WAL هنوز روی Render فعال نشده یا دسترسی شبکه/CORS به HypurrTrace مسدود است. پس از استقرار بک‌اند، دوباره تازه‌سازی کنید.';
+   const help=node('p','وضعیت API: '+API_BASE+'/status');help.style.cssText='font-size:12px;overflow-wrap:anywhere;color:#6d7b96';rows.replaceChildren(help);
+  }
+ }
 }
 document.getElementById('onchainRefresh').addEventListener('click',refresh);refresh();
 })();
