@@ -6,11 +6,14 @@ Run: uvicorn main:app --host 0.0.0.0 --port 8000
 from datetime import datetime, timezone
 from typing import Optional
 import os
+from pathlib import Path
 import httpx
 from fastapi import FastAPI, Query
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="WAL API", version="0.2.0")
+app = FastAPI(title="WAL API", version="0.3.0")
+ROOT_DIR = Path(__file__).resolve().parent.parent
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], allow_credentials=False,
@@ -23,8 +26,16 @@ COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 
 @app.get("/")
 async def root():
-    return {"app": "WAL", "status": "online", "version": "0.2.0",
-            "note": "On-chain transfer feed requires ETHERSCAN_API_KEY."}
+    # Serve the phone-friendly Persian web app and its same-origin scripts.
+    return FileResponse(ROOT_DIR / "index.html")
+
+@app.get("/market.js")
+async def market_script():
+    return FileResponse(ROOT_DIR / "market.js", media_type="application/javascript")
+
+@app.get("/onchain.js")
+async def onchain_script():
+    return FileResponse(ROOT_DIR / "onchain.js", media_type="application/javascript")
 
 @app.get("/health")
 async def health():
