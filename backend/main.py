@@ -94,3 +94,52 @@ async def signals():
     return {"ok": True, "signals": [],
             "status": "WAIT",
             "reason": "No validated OHLCV strategy and no labeled backtest are configured. WAL will not invent BUY/SELL signals."}
+
+
+DEBANK_ACCESS_KEY = os.getenv("DEBANK_ACCESS_KEY", "").strip()
+DEBANK_BASE = "https://pro-openapi.debank.com/v1"
+HYPURRTRACE_BASE = "https://trace.hypurrscan.io/api/v1"
+
+@app.get("/wallet/debank")
+async def debank_wallet(id: str = Query(..., min_length=42, max_length=42)):
+    """Fetch real wallet portfolio from DeBank. Requires a server-side DeBank AccessKey."""
+    if not DEBANK_ACCESS_KEY:
+        return {"ok": False, "configured": False, "source": "DeBank",
+                "error": "DEBANK_ACCESS_KEY is not configured on the hosting service."}
+    if not id.startswith("0x"):
+        return {"ok": False, "error": "Wallet must be an EVM 0x address."}
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.get(
+            f"{DEBANK_BASE}/user/total_balance",
+            params={"id": id},
+            headers={"AccessKey": DEBANK_ACCESS_KEY, "accept": "application/json"},
+        )
+        response.raise_for_status()
+        data = response.json()
+    return {"ok": True, "source": "DeBank", "wallet": id, "data": data,
+            "as_of_utc": datetime.now(timezone.utc).isoformat()}
+
+@app.get("/onchain/hypurrscan/recent")
+async def hypurrscan_recent():
+    """Public recent HyperEVM transactions; these are activity records, not automatically whales."""
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.get(f"{HYPURRTRACE_BASE}/recent")
+        response.raise_for_status()
+        data = response.json()
+    return {"ok": True, "source": "HypurrTrace / Hypurrscan",
+            "warning": "Recent transactions are not proof of whale accumulation or buy intent.",
+            "data": data, "as_of_utc": datetime.now(timezone.utc).isoformat()}
+
+@app.get("/onchain/hypurrscan/whale-transfers")
+async def hypurrscan_whale_transfers():
+    """Proxy HypurrTrace indexed large transfers, preserving provider output and failures."""
+    async with httpx.AsyncClient(timeout=25) as client:
+        response = await client.get(f"{HYPURRTRACE_BASE}/indexed/whale-transfers")
+        if response.is_error:
+            return {"ok": False, "source": "HypurrTrace / Hypurrscan",
+                    "http_status": response.status_code,
+                    "error": "Provider rejected the request; endpoint may require query parameters or indexing may be unavailable."}
+        data = response.json()
+    return {"ok": True, "source": "HypurrTrace / Hypurrscan",
+            "warning": "Large transfers are not necessarily independent whale buying.",
+            "data": data, "as_of_utc": datetime.now(timezone.utc).isoformat()}
