@@ -1,7 +1,7 @@
 (function(){
 const status=document.getElementById('onchainStatus'),rows=document.getElementById('onchainRows');
 // Render's service name from render.yaml; if it has not been deployed yet, use the public provider fallback.
-const API_BASE='https://wal-api.onrender.com';
+const API_BASE='';
 function node(tag,text){const e=document.createElement(tag);e.textContent=text;return e;}
 function findRows(x){
  if(Array.isArray(x)) return x;
