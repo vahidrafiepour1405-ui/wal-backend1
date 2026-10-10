@@ -30,6 +30,24 @@ async def root():
 async def health():
     return {"ok": True, "utc": datetime.now(timezone.utc).isoformat()}
 
+@app.get("/status")
+async def status():
+    """Safe deployment diagnostics; reports configuration without exposing credentials."""
+    return {
+        "app": "WAL",
+        "ok": True,
+        "version": app.version,
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(),
+        "sources": {
+            "CoinGecko": {"configured": True, "mode": "public API"},
+            "HypurrTrace": {"configured": True, "mode": "public read-only API"},
+            "DeBank": {"configured": bool(DEBANK_ACCESS_KEY), "mode": "server-side key"},
+            "Etherscan": {"configured": bool(ETHERSCAN_API_KEY), "mode": "server-side key"},
+        },
+        "signals": {"status": "WAIT", "enabled": False,
+                    "reason": "No validated strategy/backtest is configured; no synthetic signals are emitted."},
+    }
+
 @app.get("/prices")
 async def prices(ids: str = Query("bitcoin,ethereum,solana,hyperliquid,worldcoin-wld,compound-governance-token")):
     wanted = [x.strip() for x in ids.split(",") if x.strip()][:50]
@@ -106,8 +124,8 @@ async def debank_wallet(id: str = Query(..., min_length=42, max_length=42)):
     if not DEBANK_ACCESS_KEY:
         return {"ok": False, "configured": False, "source": "DeBank",
                 "error": "DEBANK_ACCESS_KEY is not configured on the hosting service."}
-    if not id.startswith("0x"):
-        return {"ok": False, "error": "Wallet must be an EVM 0x address."}
+    if not (id.startswith("0x") and all(c in "0123456789abcdefABCDEF" for c in id[2:])):
+        return {"ok": False, "error": "Wallet must be a valid 40-hex-character EVM address."}
     async with httpx.AsyncClient(timeout=20) as client:
         response = await client.get(
             f"{DEBANK_BASE}/user/total_balance",
