@@ -23,7 +23,7 @@ jobs:
           html = Path("index.html").read_text(encoding="utf-8")
           assert '<html lang="fa" dir="rtl">' in html
           assert "<script>" in html and "</script>" in html
-          assert "market.js?v=1" in html
+          assert "market.js?v=2" in html
           assert 'id="pairs"' in html and 'id="refresh"' in html
           scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
           Path("wal-inline.js").write_text(scripts[0], encoding="utf-8")
