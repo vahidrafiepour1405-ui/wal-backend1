@@ -11,3 +11,5 @@ services:
         value: 3.12.8
       - key: ETHERSCAN_API_KEY
         sync: false
+      - key: DEBANK_ACCESS_KEY
+        sync: false
