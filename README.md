@@ -1,28 +1,19 @@
-# WAL — Whale Analysis Live (Web Preview)
+# WAL — Whale Analysis Live
 
-نسخه وب اولیه و فارسی WAL برای مشاهده فهرست نمادهای فارکس و بازارهای جهانی.
+A Persian RTL-first market-monitoring prototype with a small optional FastAPI backend.
 
-## اجرای محلی
-فایل `index.html` را در مرورگر باز کنید. برای اجرای بهتر با سرور محلی:
-`python -m http.server 8000`
-سپس `http://localhost:8000` را باز کنید.
+## Web version
+GitHub Pages publishes the static frontend from the repository root. The frontend currently fetches reference FX rates and selected crypto prices directly from public APIs. Some listed markets do not yet have a live provider. The interface should show missing data instead of fabricating it.
 
-## استقرار GitHub Pages
-در مخزن GitHub به Settings → Pages بروید و Source را روی GitHub Actions قرار دهید. سپس در Actions بررسی کنید workflow با نام Deploy WAL web app to GitHub Pages با موفقیت اجرا شود. تنها پس از موفقیت workflow، URL عمومی را معتبر بدانید.
+## Backend (optional)
+- `backend/main.py`: FastAPI health check, CoinGecko price proxy, and Ethereum ERC-20 transfer feed through Etherscan API V2.
+- Install with `pip install -r backend/requirements.txt`.
+- Run with `uvicorn main:app --host 0.0.0.0 --port 8000` from the backend directory.
+- Configure `ETHERSCAN_API_KEY` as a secret/environment variable on the hosting platform. Never commit API keys.
+- Endpoints: `/health`, `/prices`, `/whales/ethereum`, `/signals`.
 
-## داده و محدودیت‌ها
-- نرخ‌های ارز در نسخه فعلی از Frankfurter API و به‌صورت نرخ مرجع روزانه دریافت می‌شوند؛ این نرخ‌ها قیمت لحظه‌ای بروکر نیستند.
-- طلا، نقره، پلاتین، رمزارزها، نفت و شاخص‌ها در فهرست نمادها حضور دارند، اما تا زمانی که ارائه‌دهنده معتبر برای آن‌ها پیکربندی نشده باشد، قیمت و سیگنال نمایش داده نمی‌شود.
-- سیگنال‌های BUY/SELL، نمودار کندلی درون‌روزی، ردیابی نهنگ و بک‌تست هنوز در این نسخه وب اولیه پیاده‌سازی نشده‌اند.
-- هیچ امتیاز یا احتمال برد ساختگی تولید نمی‌شود؛ وضعیت در نبود داده کافی WAIT است.
-
-## انتشار
-Workflow در `.github/workflows/pages.yml` تعریف شده است. افزودن workflow به مخزن به‌تنهایی به معنی فعال بودن Pages یا موفقیت انتشار نیست؛ وضعیت Actions و Settings را بررسی کنید.
-
-## گام‌های نسخه تولیدی
-1. بک‌اند امن با مدیریت کلیدهای API
-2. ارائه‌دهندگان داده زنده برای فارکس، فلزات، انرژی و شاخص‌ها
-3. داده کندل، کیفیت و تازگی داده
-4. موتور سیگنال قابل آزمون و بک‌تست خارج از نمونه
-5. ماژول آن‌چین و طبقه‌بندی نهنگ‌ها
-6. تست‌های خودکار و ساخت APK/AAB
+## Important limitations
+- Raw token transfers are not proof of independent whale accumulation, net buying, or intent. Exchange, bridge, contract, staking and project wallets need labeling and clustering before making those claims.
+- `/signals` intentionally returns WAIT until a validated candle-based strategy and out-of-sample backtest are implemented.
+- This repository does not contain a built Android APK. GitHub Pages hosts a website, not an Android app.
+- Public APIs have rate limits and may fail in some regions/networks. A backend deployment is needed to hide keys and normalize data.
